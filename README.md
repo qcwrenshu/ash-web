@@ -5,9 +5,11 @@
 # ash-web
 
 Ash Web: Web application for [Ash 2](https://github.com/qcwrenshu/ash-public) (Discord bot for StormLands)
+
 (never finished!)
 
 Written in HTML, CSS, JavaScript (Express on Node.js), GraphQL
+
 using React, Babel, Webpack, Apollo
 
 (@qcwrenshu turnip)
@@ -33,6 +35,7 @@ Assuming Ash Public is already installed:
 # Build
 
 Run `npx webpack` or `npm run build` after updating scripts in `src`.
+
 This compiles the scripts and places them in `public/scripts`.
 
 # For more information

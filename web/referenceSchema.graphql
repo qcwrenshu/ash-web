@@ -1,0 +1,399 @@
+# Ash Web
+# @qcwrenshu
+
+# User
+
+type User {
+    id: String! # User's Discord ID
+    username: String # User's Discord username
+    display_name: String # User's Discord global display name, or their username if they don't have one
+    avatar: String # User's Discord avatar hash
+    #banner: String # User's Discord banner hash
+    color: Int # User's banner accent color, encoded in base 10 format
+
+    verified: Boolean! # Whether user is verified or not
+    steam_id: String # User's Steam64 ID
+    verification_timestamp: Float # User's verification date, as milliseconds since epoch
+    playtime: Float # User's in-game playtime, in milliseconds
+    times_joined: Int # Number of times the user has joined an in-game server
+    deaths: Int # Number of deaths in-game
+    last_played: Float # Last time the user has been online in-game, as milliseconds since epoch
+
+    accounts: [Account!] # User's economy accounts
+    nations: [Nation!] # User's nations
+    factions: [Faction!] # User's factions
+    vehicles: [Vehicle!] # User's vehicles
+
+    primary_account: Account # User's primary economy account
+}
+
+# Account
+
+type AccountHistoryEntry {
+    time: Float! # Seconds since epoch
+    data: String!
+}
+
+type AccountUser {
+    user: User!
+    p_use: Boolean! # Can perform transactions with account
+    p_delete: Boolean! # Can delete account
+    p_rename: Boolean! # Can rename account
+
+    account: Account!
+}
+
+interface Account {
+    id: Int! # Account ID
+    name: String! # Account name
+    type: Int! # Account type
+    balance: Int! # Account balance
+    history: [AccountHistoryEntry!] # [Restricted] Account history; may not be available if current user has insufficient permissions
+    users: [AccountUser!]! # Account users
+
+    current_user: AccountUser! # External API only; Current user as AccountUser; for viewing current user permissions
+}
+
+type PersonalAccount implements Account {
+    id: Int!
+    name: String!
+    type: Int!
+    balance: Int!
+    history: [AccountHistoryEntry!]
+    users: [AccountUser!]!
+
+    current_user: AccountUser!
+
+    owner: User!
+}
+type FactionAccount implements Account {
+    id: Int!
+    name: String!
+    type: Int!
+    balance: Int!
+    history: [AccountHistoryEntry!]
+    users: [AccountUser!]!
+
+    current_user: AccountUser!
+
+    owner: Faction!
+}
+type NationAccount implements Account {
+    id: Int!
+    name: String!
+    type: Int!
+    balance: Int!
+    history: [AccountHistoryEntry!]
+    users: [AccountUser!]!
+
+    current_user: AccountUser!
+
+    owner: Nation!
+}
+
+# Group
+
+type GroupRankPermissions { # Fields are camelCase because NationRankTaxes directly reflects Ash instance
+    canUseEconomyAccounts: Boolean # Can perform transactions with group economy accounts
+    canDeleteEconomyAccounts: Boolean # Can delete group economy accounts
+    canRenameEconomyAccounts: Boolean # Can rename group economy accounts
+    canManageMembers: Boolean # Can manage group members (with lower rank)
+    canEditDetails: Boolean # Can edit details (change description and image)
+}
+
+interface GroupRank {
+    id: Int!
+    name: String!
+    display_order: Int!
+    permissions: GroupRankPermissions!
+    members: [GroupMember!]!
+    group: Group!
+}
+
+interface GroupMember {
+    user: User
+    rank: GroupRank!
+
+    p_use_economy_accounts: Boolean! # canUseEconomyAccounts permission
+    p_delete_economy_accounts: Boolean! # canDeleteEconomyAccounts permission
+    p_rename_economy_accounts: Boolean! # canRenameEconomyAccounts permission
+    p_manage_members: Boolean! # canManageMembers permission
+    p_edit_details: Boolean! # canEditDetails permission
+
+    group: Group!
+}
+
+interface Group {
+    id: Int! # Group ID; dependent on group type (differing namespace)
+    owner: GroupMember # Group owner
+    name: String! # Group name
+    description: String! # Group description. May contain markdown code, and should be rendered appropriately.
+    short_description: String! # Group short description. This will never exceed 100 characters.
+    color: Int! # Group color encoded in base 10 format
+    display_image: String! # Link to group display image
+    creation_timestamp: Float! # Group creation date as milliseconds since epoch
+
+    current_user_invite_pending: Boolean! # Whether current user has an invite from this group
+    members: [GroupMember!]! # Group members
+    ranks: [GroupRank!]! # Group ranks
+
+    current_user: GroupMember # External API only; Current user as GroupMember; for viewing current user permissions
+}
+
+# Faction
+
+type FactionRank implements GroupRank {
+    id: Int!
+    name: String!
+    display_order: Int!
+    permissions: GroupRankPermissions!
+    members: [FactionMember!]!
+    group: Faction!
+}
+
+type FactionMember implements GroupMember {
+    user: User
+    rank: FactionRank!
+
+    p_use_economy_accounts: Boolean!
+    p_delete_economy_accounts: Boolean!
+    p_rename_economy_accounts: Boolean!
+    p_manage_members: Boolean!
+    p_edit_details: Boolean!
+
+    group: Faction!
+}
+
+type FactionConfiguration {
+    primary_account: FactionAccount! # Faction primary account
+}
+
+type Faction implements Group {
+    id: Int!
+    owner: FactionMember
+    name: String!
+    description: String!
+    short_description: String!
+    color: Int!
+    display_image: String!
+    creation_timestamp: Float!
+
+    current_user_invite_pending: Boolean!
+    members: [FactionMember!]!
+    ranks: [FactionRank!]!
+
+    current_user: GroupMember
+
+    nation: Nation # Faction nation
+    accounts: [FactionAccount!]! # Faction economy accounts
+    vehicles: [Vehicle!]! # Faction vehicles
+    vehicle_templates: [VehicleTemplate!]! # Faction vehicle templates
+
+    configuration: FactionConfiguration! # Nation configuration
+}
+
+# Nation
+
+type NationRankTaxes { # Fields are camelCase because NationRankTaxes directly reflects Ash instance
+    personalIncomeTax: Float # Personal income tax: percentage 0-1
+    personalOutgoingTax: Float # Personal outgoing tax: percentage 0-1
+    inGameActivitiesTax: Float # In-game activities tax: percentage 0-1
+}
+
+type NationRank implements GroupRank {
+    id: Int!
+    name: String!
+    display_order: Int!
+    permissions: GroupRankPermissions!
+    members: [NationMember!]!
+    group: Nation!
+
+    taxes: NationRankTaxes!
+}
+
+type NationMember implements GroupMember {
+    user: User
+    rank: NationRank!
+
+    p_use_economy_accounts: Boolean!
+    p_delete_economy_accounts: Boolean!
+    p_rename_economy_accounts: Boolean!
+    p_manage_members: Boolean!
+    p_edit_details: Boolean!
+
+    group: Nation!
+}
+
+type NationConfiguration {
+    faction_income_tax: Float! # Nation faction income tax: percentage 0-1
+    faction_outgoing_tax: Float! # Nation faction outgoing tax: percentage 0-1
+    primary_account: NationAccount! # Nation primary account
+    tax_destination_account: NationAccount! # Nation tax destination account
+}
+
+type Nation implements Group {
+    id: Int!
+    owner: NationMember
+    name: String!
+    description: String!
+    short_description: String!
+    color: Int!
+    display_image: String!
+    creation_timestamp: Float!
+
+    current_user_invite_pending: Boolean!
+    members: [NationMember!]!
+    ranks: [NationRank!]!
+
+    current_user: GroupMember
+
+    accounts: [NationAccount!]! # Nation economy accounts
+    vehicles: [Vehicle!]! # Nation vehicles
+    factions: [Faction!]! # Nation factions
+
+    configuration: NationConfiguration! # Nation configuration
+}
+
+# Vehicle
+
+type VehicleTemplate {
+    id: Int!
+    name: String!
+    description: String!
+    image: String!
+    vehicle_type: Int!
+    creation_timestamp: Float!
+
+    is_approved: Boolean!
+    vehicles_created: Int!
+
+    creator: User!
+    faction: Faction!
+
+    administrators: [User!]!
+}
+
+interface Vehicle {
+    id: Int!
+    name: String!
+    type: Int!
+    description: String!
+    image: String!
+    vehicle_type: Int!
+    note: String! # [Restricted] Vehicle note; may not be available if current user has insufficient permissions
+    creation_timestamp: Float!
+    hidden: Boolean!
+
+    faction_name: String! # From faction cache. Support defunct manufacturers
+    faction_display_image: String! # From faction cache. Support defunct manufacturers
+    faction_color: Int! # From faction cache. Support defunct manufacturers
+    faction: Faction
+
+    usage_time: Int!
+    mileage: Int!
+    condition: Float!
+
+    administrators: [User!]!
+    users: [User!]!
+}
+
+type PersonalVehicle implements Vehicle {
+    id: Int!
+    name: String!
+    type: Int!
+    description: String!
+    image: String!
+    vehicle_type: Int!
+    note: String! # [Restricted] Vehicle note; may not be available if current user has insufficient permissions
+    creation_timestamp: Float!
+    hidden: Boolean!
+
+    faction_name: String!
+    faction_display_image: String!
+    faction_color: Int!
+    faction: Faction
+
+    usage_time: Int!
+    mileage: Int!
+    condition: Float!
+
+    owner: User!
+    administrators: [User!]!
+    users: [User!]!
+}
+
+type FactionVehicle implements Vehicle {
+    id: Int!
+    name: String!
+    type: Int!
+    description: String!
+    image: String!
+    vehicle_type: Int!
+    note: String! # [Restricted] Vehicle note; may not be available if current user has insufficient permissions
+    creation_timestamp: Float!
+    hidden: Boolean!
+
+    faction_name: String!
+    faction_display_image: String!
+    faction_color: Int!
+    faction: Faction
+
+    usage_time: Int!
+    mileage: Int!
+    condition: Float!
+
+    owner: Faction!
+    administrators: [User!]!
+    users: [User!]!
+
+    minimum_permission_level: Int!
+}
+
+type NationVehicle implements Vehicle {
+    id: Int!
+    name: String!
+    type: Int!
+    description: String!
+    image: String!
+    vehicle_type: Int!
+    note: String! # [Restricted] Vehicle note; may not be available if current user has insufficient permissions
+    creation_timestamp: Float!
+    hidden: Boolean!
+
+    faction_name: String!
+    faction_display_image: String!
+    faction_color: Int!
+    faction: Faction
+
+    usage_time: Int!
+    mileage: Int!
+    condition: Float!
+
+    owner: Nation!
+    administrators: [User!]!
+    users: [User!]!
+
+    minimum_permission_level: Int!
+}
+
+# Server
+
+
+
+# Query
+
+type Query {
+    current_user: User! # External API only
+
+    user(id: String!): User
+    account(id: Int!): Account
+    nation(id: Int!): Nation
+    faction(id: Int!): Faction
+    vehicle(id: Int!): Vehicle
+    vehicle_template(id: Int!): VehicleTemplate # [Restricted] only available if user has administrator permission
+
+    user_from_steam_id(id: String!): User
+
+    nations: [Nation!]!
+    factions: [Faction!]!
+}

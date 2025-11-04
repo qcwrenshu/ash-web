@@ -1,0 +1,35 @@
+<!--
+Ash Web
+@qcwrenshu
+
+Upon login (i.e. a redirection from Discord to /authorize), the server sends this page to the client.
+The client fetches local user data from the server and places it in local storage.
+
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>StormLands</title>
+    
+    <link rel="stylesheet" href="/styles/style.css">
+    
+    <link rel="icon" type="image/webp" href="/images/logo-full.webp">
+    
+    <meta charset="utf-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <meta name="color-scheme" content="light dark">
+  </head>
+  <body style="width: 100%; height: 100%; position: fixed; display: flex; gap: 10px; align-items: center; justify-content: center;">
+    <div class="loading-icon" style="margin-right: 2px;"></div><p>Signing in...</p>
+    <script>
+      fetch("/identify").then(async response => {
+        const data = await response.json();
+        if (response.ok) localStorage.setItem("user_data", JSON.stringify(data));
+        location.replace("/");
+      });
+    </script>
+  </body>
+</html>
